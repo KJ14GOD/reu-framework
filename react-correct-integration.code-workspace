@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../JitVul-C6C7"
+		},
+		{
+			"path": "../CORRECT"
+		},
+		{
+			"path": "../../Desktop/jitvul-correct-integration"
+		}
+	],
+	"settings": {}
+}
