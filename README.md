@@ -50,6 +50,16 @@ python main.py
 python main.py --limit 5 --benchmark final_benchmark.jsonl
 ```
 
+**Using DeepSeek model:**
+```bash
+python main.py --use-deepseek --deepseek-model deepseek-chat
+```
+
+**Using different OpenAI model:**
+```bash
+python main.py --model gpt-4-turbo
+```
+
 ## 📊 Understanding the Output
 
 ### Console Output
@@ -127,6 +137,7 @@ The file contains structured data about each learning event:
 ### Environment Variables
 
 - `OPENAI_API_KEY`: Your OpenAI API key
+- `DEEPSEEK_API_KEY`: Your DeepSeek API key (optional, for DeepSeek models)
 - `LANGCHAIN_TRACING_V2`: Set to "true" for tracing (optional)
 - `LANGCHAIN_API_KEY`: LangSmith API key (optional)
 
@@ -134,6 +145,9 @@ The file contains structured data about each learning event:
 
 - `--limit`: Number of function pairs to analyze (default: 3)
 - `--benchmark`: Path to benchmark data file (default: final_benchmark.jsonl)
+- `--model`: Model name to use (default: gpt-4o)
+- `--use-deepseek`: Use DeepSeek API instead of OpenAI
+- `--deepseek-model`: DeepSeek model name (default: deepseek-chat)
 
 ## 📈 Understanding Results
 

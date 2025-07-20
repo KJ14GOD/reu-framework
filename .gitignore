@@ -23,3 +23,6 @@ coverage.xml
 .hypothesis
 final_benchmark.jsonl
 *.pdf
+.env
+.env.local
+.env.*.local

@@ -2,6 +2,7 @@ import json
 import sys
 import os
 import textwrap
+import argparse
 from react_agent import ReActAgent
 from reflexion_agent import ReflexionAgent
 from evaluation_agent import EvaluationAgent
@@ -730,7 +731,7 @@ def add_final_summary_to_log(results, log_file="vulnerability_analysis_log.txt")
         f.write(f"{'='*80}\n")
         f.flush()
 
-def run_multi_agent_workflow(benchmark_path, limit=3):
+def run_multi_agent_workflow(benchmark_path, limit=3, use_deepseek=False, model_name="gpt-4o"):
     """
     Multi-agent workflow: ReAct Agent → Reflexion Agent
     No ground truth is revealed to either agent.
@@ -751,9 +752,9 @@ def run_multi_agent_workflow(benchmark_path, limit=3):
     print(f"NOTE: Iterative debate may use 3-8 API calls per function")
     print("-" * 60)
     
-    react_agent = ReActAgent(model_name="gpt-4o")
-    reflexion_agent = ReflexionAgent(model_name="gpt-4o")
-    evaluation_agent = EvaluationAgent(model_name="gpt-4o")
+    react_agent = ReActAgent(model_name=model_name, use_deepseek=use_deepseek)
+    reflexion_agent = ReflexionAgent(model_name=model_name)
+    evaluation_agent = EvaluationAgent(model_name=model_name)
     
     results = []
     count = 0
@@ -1231,7 +1232,17 @@ def extract_score_components(output):
     return exploitability, impact, complexity
 
 if __name__ == "__main__":
-    benchmark_path = "final_benchmark.jsonl"
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Multi-Agent Vulnerability Analysis with ReAct and Reflexion")
+    parser.add_argument("--limit", type=int, default=3, help="Number of function pairs to analyze (default: 3)")
+    parser.add_argument("--benchmark", type=str, default="final_benchmark.jsonl", help="Path to benchmark file (default: final_benchmark.jsonl)")
+    parser.add_argument("--model", type=str, default="gpt-4o", help="Model to use (default: gpt-4o)")
+    parser.add_argument("--use-deepseek", action="store_true", help="Use DeepSeek API instead of OpenAI")
+    parser.add_argument("--deepseek-model", type=str, default="deepseek-chat", help="DeepSeek model name (default: deepseek-chat)")
+    
+    args = parser.parse_args()
+    
+    benchmark_path = args.benchmark
     if not os.path.exists(benchmark_path):
         print(f"Benchmark file not found: {benchmark_path}")
         sys.exit(1)
@@ -1240,4 +1251,12 @@ if __name__ == "__main__":
     print("ReAct Agent → Reflexion Agent")
     print("(No ground truth revealed to agents)")
     
-    run_multi_agent_workflow(benchmark_path, limit=3) 
+    # Choose model based on arguments
+    if args.use_deepseek:
+        model_name = args.deepseek_model
+        print(f"Using DeepSeek model: {model_name}")
+    else:
+        model_name = args.model
+        print(f"Using OpenAI model: {model_name}")
+    
+    run_multi_agent_workflow(benchmark_path, limit=args.limit, use_deepseek=args.use_deepseek, model_name=model_name) 

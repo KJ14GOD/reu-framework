@@ -1,7 +1,12 @@
 import os
 from langchain_openai import ChatOpenAI
 
-os.environ["OPENAI_API_KEY"] = "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"
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Debug: Print the API key being used
+print(f"DEBUG: Using API key: {os.environ.get('OPENAI_API_KEY', 'NOT SET')[:20]}...")
 
 class ReflexionAgent:
     def __init__(self, model_name="gpt-4o"):
@@ -34,7 +39,7 @@ class ReflexionAgent:
         
         prompt = f"""You are a COMPREHENSIVE security verification expert reviewing function '{function_name}'.
 
-**🎯 MISSION: Verify ReAct's analysis for BOTH specific CVEs AND general vulnerabilities**
+**🎯 MISSION: Verify ReAct's analysis for security vulnerabilities**
 
 **ReAct's Analysis:**
 {analysis_text}
@@ -49,49 +54,40 @@ class ReflexionAgent:
 **STEP 1: EXAMINE THE CODE INDEPENDENTLY**
 Ignore ReAct's opinion - analyze the code with fresh expert eyes.
 
-**STEP 2: VERIFY SPECIFIC CVE PATTERNS**
+**STEP 2: VERIFY VULNERABILITY PATTERNS**
 
-**CVE-2019-3877 - URL Validation Missing Backslash Check:**
-✅ **IS VULNERABLE** = URL loop WITHOUT `if (*i == '\\\\') return ERROR;`
-❌ **NOT VULNERABLE** = URL loop WITH `if (*i == '\\\\') return ERROR;`
+**Input Validation & Sanitization Issues:**
+- ✅ VULNERABLE: Missing validation of user input parameters
+- ✅ VULNERABLE: Insufficient bounds checking on arrays/buffers
+- ✅ VULNERABLE: Missing null pointer checks before dereference
+- ✅ VULNERABLE: Inadequate character filtering (missing backslash, control character checks)
+- ✅ VULNERABLE: URL validation bypasses and redirect vulnerabilities
 
-**CVE-2018-20843 - XML Colon Processing Without Limits:**
-✅ **IS VULNERABLE** = Colon processing WITHOUT `break;` after first match
-❌ **NOT VULNERABLE** = Colon processing WITH `break;` after first match
-
-**CVE-2018-16452 - Recursion Without Depth Control:**
-✅ **IS VULNERABLE** = Warning printed but recursion continues
-❌ **NOT VULNERABLE** = Returns/stops when depth limit reached
-
-**STEP 3: VERIFY GENERAL VULNERABILITY PATTERNS**
-
-**Buffer Overflow Issues:**
-- ✅ VULNERABLE: `strcpy()`, `strcat()`, `sprintf()` without bounds
-- ✅ VULNERABLE: Array access without bounds validation
-- ✅ VULNERABLE: Memory allocation without size checks
-
-**Input Validation Issues:**
-- ✅ VULNERABLE: Missing null pointer checks before use
-- ✅ VULNERABLE: No bounds checking on user input
-- ✅ VULNERABLE: Unchecked array/buffer indices
-- ✅ VULNERABLE: Missing parameter validation
-
-**Memory Management Issues:**
-- ✅ VULNERABLE: Use after free patterns
+**Memory Safety Issues:**
+- ✅ VULNERABLE: Buffer overflow vulnerabilities (strcpy, strcat, sprintf without bounds)
+- ✅ VULNERABLE: Use-after-free patterns
 - ✅ VULNERABLE: Double free vulnerabilities
+- ✅ VULNERABLE: Memory leaks in error paths
 - ✅ VULNERABLE: Uninitialized memory access
 
+**Control Flow Vulnerabilities:**
+- ✅ VULNERABLE: Recursion without depth limits
+- ✅ VULNERABLE: Infinite loops or excessive iteration
+- ✅ VULNERABLE: Missing break statements in switch cases
+- ✅ VULNERABLE: Improper error handling that continues execution
+
 **Integer Issues:**
-- ✅ VULNERABLE: Arithmetic without overflow checks
+- ✅ VULNERABLE: Integer overflow/underflow in arithmetic operations
+- ✅ VULNERABLE: Signed/unsigned integer confusion
 - ✅ VULNERABLE: Size calculations that can wrap
-- ✅ VULNERABLE: Signed/unsigned confusion
+- ✅ VULNERABLE: Array indexing without bounds validation
 
 **Other Common Patterns:**
 - ✅ VULNERABLE: Format string issues
 - ✅ VULNERABLE: Race conditions
 - ✅ VULNERABLE: Injection vulnerabilities
 
-**STEP 4: CHALLENGE REACT'S ASSESSMENT**
+**STEP 3: CHALLENGE REACT'S ASSESSMENT**
 
 **If ReAct said NOT_VULNERABLE but you found issues:**
 - Quote specific vulnerable code patterns
@@ -107,11 +103,11 @@ Ignore ReAct's opinion - analyze the code with fresh expert eyes.
 - Adjust scoring based on actual risk
 - Provide better severity assessment
 
-**STEP 5: COMPREHENSIVE SCORING**
+**STEP 4: COMPREHENSIVE SCORING**
 
-- **9-10/10:** Exact CVE match or severe vulnerability
-- **7-8/10:** Clear vulnerability with exploitation potential
-- **5-6/10:** Security weakness or missing controls
+- **9-10/10:** Clear vulnerability with exploitation potential
+- **7-8/10:** Security weakness with potential impact
+- **5-6/10:** Missing security controls or weak validation
 - **3-4/10:** Minor security concerns
 - **1-2/10:** Very minor issues, mostly secure
 - **0/10:** No vulnerabilities, proper controls present
@@ -136,7 +132,7 @@ Ignore ReAct's opinion - analyze the code with fresh expert eyes.
 - "Code missing input validation on array index - out of bounds risk, ReAct INCORRECT"
 - "Function properly validates all inputs and uses safe string functions - ReAct CORRECT"
 
-**CRITICAL: Don't be overly conservative! If you see real vulnerability patterns, challenge ReAct!**"""
+**CRITICAL: Be thorough but precise. Flag vulnerabilities with concrete evidence.**"""
         
         print("Sending analysis to Reflexion agent...")
         print(f"{'='*60}")

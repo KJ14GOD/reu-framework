@@ -3,7 +3,12 @@ from langchain_openai import ChatOpenAI
 import json
 from datetime import datetime
 
-os.environ["OPENAI_API_KEY"] = "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"
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Debug: Print the API key being used
+print(f"DEBUG: Using API key: {os.environ.get('OPENAI_API_KEY', 'NOT SET')[:20]}...")
 
 class EvaluationAgent:
     def __init__(self, model_name="gpt-4o"):
@@ -93,6 +98,16 @@ class EvaluationAgent:
 - CWE: {cve_info.get('cwe', 'Unknown')}
 """
         
+        # Enhanced ground truth context with pre/post patch comparison
+        patch_context = ""
+        if cve_info and cve_info.get('description'):
+            patch_context = f"""
+**PATCH ANALYSIS CONTEXT:**
+- This vulnerability was patched to fix: {cve_info.get('description', '')}
+- Look for the specific security issue mentioned in the CVE description
+- Compare the vulnerable code patterns with the patch description
+"""
+        
         return f"""You are an EXPERT security evaluation specialist analyzing vulnerability detection accuracy.
 
 **🎯 MISSION: Evaluate the correctness of vulnerability analysis and identify learning opportunities**
@@ -114,6 +129,7 @@ Project: {project_info.get('project', 'Unknown') if project_info else 'Unknown'}
 
 {ground_truth_context}
 {cve_context}
+{patch_context}
 
 **YOUR EVALUATION TASK:**
 

@@ -1,16 +1,50 @@
 from langchain_openai import ChatOpenAI
 from langchain.agents import initialize_agent, AgentType
-
 import os
 
-# Set your OpenAI and LangSmith keys here
-os.environ["OPENAI_API_KEY"] = "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"
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Debug: Print the API key being used
+print(f"DEBUG: Using API key: {os.environ.get('OPENAI_API_KEY', 'NOT SET')[:20]}...")
+
+# Set LangSmith keys
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_API_KEY"] = "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"
 
+# DeepSeek API configuration
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
+
 class ReActAgent:
-    def __init__(self, model_name="gpt-4o"):
-        self.llm = ChatOpenAI(model=model_name, temperature=0)
+    def __init__(self, model_name="gpt-4o", use_deepseek=False):
+        """
+        Initialize ReAct Agent with either OpenAI or DeepSeek model
+        
+        Args:
+            model_name: Model name (default: "gpt-4o")
+            use_deepseek: If True, use DeepSeek API instead of OpenAI
+        """
+        self.use_deepseek = use_deepseek
+        
+        if use_deepseek:
+            if not DEEPSEEK_API_KEY:
+                raise ValueError("DEEPSEEK_API_KEY environment variable is required for DeepSeek models")
+            
+            # Use DeepSeek API
+            self.llm = ChatOpenAI(
+                model=model_name,
+                temperature=0,
+                openai_api_key=DEEPSEEK_API_KEY,
+                openai_api_base=DEEPSEEK_BASE_URL
+            )
+            print(f"Using DeepSeek model: {model_name}")
+        else:
+            # Use OpenAI API
+            self.llm = ChatOpenAI(model=model_name, temperature=0)
+            print(f"Using OpenAI model: {model_name}")
+        
         self.tools = []
         self.agent = None
 
@@ -33,65 +67,42 @@ class ReActAgent:
             
         prompt = f"""You are an EXPERT vulnerability hunter analyzing function '{function_name}' for security flaws.
 
-**🎯 MISSION: Detect BOTH specific CVE patterns AND general vulnerability patterns**
+**🎯 MISSION: Detect security vulnerabilities through comprehensive code analysis**
 
 **STEP 1: GET THE FUNCTION CODE**
 Use get_function_body tool to examine the actual source code.
 
 **STEP 2: COMPREHENSIVE VULNERABILITY DETECTION**
 
-**A. SPECIFIC CVE PATTERNS (High Priority - Score 8-10/10)**
+**A. HIGH PRIORITY VULNERABILITY PATTERNS (Score 8-10/10)**
 
-**CVE-2019-3877 - URL Validation Missing Backslash Check:**
-```c
-// ✅ VULNERABLE: URL loop WITHOUT backslash check
-for (i = url; *i; i++) {{
-    if (*i >= 0 && *i < ' ') return ERROR;
-    // ❌ MISSING: if (*i == '\\\\') return ERROR;
-}}
-```
+**Input Validation & Sanitization Issues:**
+- Missing validation of user input parameters
+- Insufficient bounds checking on arrays/buffers
+- Missing null pointer checks before dereference
+- Inadequate character filtering (missing backslash, control character checks)
+- URL validation bypasses and redirect vulnerabilities
 
-**CVE-2018-20843 - XML Colon Processing Without Limits:**
-```c
-// ✅ VULNERABLE: Colon processing WITHOUT break
-for (name = elementType->name; *name; name++) {{
-    if (*name == XML_T(ASCII_COLON)) {{
-        // processes colon without break
-    }}
-}}
-```
-
-**CVE-2018-16452 - Recursion Without Depth Control:**
-```c
-// ✅ VULNERABLE: Warns but continues recursing
-if (depth == 10)
-    print("warning");  // ❌ WARNS BUT DOESN'T STOP
-recursive_call();  // ❌ STILL EXECUTES
-```
-
-**B. GENERAL VULNERABILITY PATTERNS (Medium Priority - Score 5-8/10)**
-
-**Buffer Overflow Patterns:**
-- `strcpy()`, `strcat()`, `sprintf()` without bounds checking
-- Array access without bounds validation
-- Memory allocation without size validation
-
-**Input Validation Issues:**
-- Missing null pointer checks
-- No bounds checking on user input
-- Unchecked array/buffer indices
-- Missing parameter validation
-
-**Memory Management Issues:**
-- Use after free patterns
+**Memory Safety Issues:**
+- Buffer overflow vulnerabilities (strcpy, strcat, sprintf without bounds)
+- Use-after-free patterns
 - Double free vulnerabilities
 - Memory leaks in error paths
 - Uninitialized memory access
 
-**Integer Overflow/Underflow:**
-- Arithmetic operations without overflow checks
-- Size calculations that can wrap
+**Control Flow Vulnerabilities:**
+- Recursion without depth limits
+- Infinite loops or excessive iteration
+- Missing break statements in switch cases
+- Improper error handling that continues execution
+
+**B. MEDIUM PRIORITY VULNERABILITY PATTERNS (Score 5-8/10)**
+
+**Integer Issues:**
+- Integer overflow/underflow in arithmetic operations
 - Signed/unsigned integer confusion
+- Size calculations that can wrap
+- Array indexing without bounds validation
 
 **Format String Vulnerabilities:**
 - User input directly in format strings
@@ -108,21 +119,21 @@ recursive_call();  // ❌ STILL EXECUTES
 
 **STEP 3: COMPREHENSIVE ANALYSIS APPROACH**
 
-1. **Look for SPECIFIC CVE patterns first** (score 8-10/10 if found)
-2. **Scan for GENERAL vulnerability patterns** (score 5-8/10 if found)
-3. **Check for missing security controls**
-4. **Evaluate input validation and bounds checking**
-5. **Assess memory safety and error handling**
+1. **Examine input validation and sanitization** (highest priority)
+2. **Check memory safety and bounds checking**
+3. **Analyze control flow and error handling**
+4. **Look for injection and format string vulnerabilities**
+5. **Assess overall security posture**
 
 **VULNERABILITY SCORING GUIDE:**
-- **9-10/10:** Exact CVE pattern match with clear exploit
-- **7-8/10:** Clear vulnerability pattern with exploitation potential
-- **5-6/10:** Security weakness or missing controls
+- **9-10/10:** Clear vulnerability with exploitation potential
+- **7-8/10:** Security weakness with potential impact
+- **5-6/10:** Missing security controls or weak validation
 - **3-4/10:** Minor security concerns
 - **1-2/10:** Very minor issues, mostly secure
 - **0/10:** No vulnerabilities, proper security controls
 
-**CRITICAL: Don't be overly conservative! If you see vulnerability patterns, flag them!**
+**CRITICAL: Be thorough but precise. Flag vulnerabilities with concrete evidence.**
 
 **REQUIRED OUTPUT:**
 **VULNERABILITY SCORE: X/10**
@@ -130,6 +141,7 @@ recursive_call();  // ❌ STILL EXECUTES
 **ANALYSIS: [Specific vulnerability pattern found OR security assessment]**
 
 **Examples:**
+- "Missing backslash check in URL validation - Score 8/10 VULNERABLE"
 - "Buffer overflow: `strcpy(dest, src)` without bounds checking - Score 7/10 VULNERABLE"
 - "Missing null check on parameter `ptr` before dereference - Score 6/10 VULNERABLE"
 - "Proper bounds checking with `strncpy` and null termination - Score 0/10 NOT VULNERABLE"
